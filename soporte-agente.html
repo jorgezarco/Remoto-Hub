@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoportePro — Panel Agente</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Nunito:wght@300;400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#04040C;
+  --surface:#0A0A18;
+  --card:#0E0E22;
+  --border:#1E1E40;
+  --border-glow:#2D2D6B;
+  --accent:#4F6FFF;
+  --accent2:#7B4FFF;
+  --green:#00D68F;
+  --red:#FF4F6F;
+  --yellow:#FFD64F;
+  --text:#E8E8FF;
+  --muted:#6060A0;
+  --online:#00D68F;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;overflow:hidden;}
+
+/* LAYOUT */
+.root{display:grid;grid-template-columns:280px 1fr 320px;grid-template-rows:56px 1fr;height:100vh;gap:0;}
+
+/* TOPBAR */
+.topbar{
+  grid-column:1/-1;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;padding:0 20px;
+  position:relative;
+}
+.logo{
+  font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;
+  letter-spacing:3px;text-transform:uppercase;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.logo-sub{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-left:-8px;}
+.topbar-badge{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;
+  padding:3px 10px;border-radius:20px;text-transform:uppercase;
+}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+.agent-name{font-size:13px;color:var(--muted);}
+.agent-name span{color:var(--text);font-weight:600;}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);}
+.topbar-clock{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);padding:4px 10px;background:var(--card);border-radius:6px;border:1px solid var(--border);}
+
+/* SIDEBAR TICKETS */
+.sidebar{
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sidebar-header{
+  padding:14px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.sidebar-title{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.btn-new{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;
+  padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;
+  font-family:'Nunito',sans-serif;transition:opacity .2s;
+}
+.btn-new:hover{opacity:.85;}
+.tickets-list{flex:1;overflow-y:auto;padding:10px 8px;}
+.tickets-list::-webkit-scrollbar{width:4px;}
+.tickets-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.ticket-item{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:12px;margin-bottom:8px;cursor:pointer;transition:all .2s;position:relative;
+}
+.ticket-item:hover{border-color:var(--accent);box-shadow:0 0 12px #4F6FFF22;}
+.ticket-item.active{border-color:var(--accent);background:#0F0F28;}
+.ticket-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(to bottom,var(--accent),var(--accent2));border-radius:10px 0 0 10px;}
+.t-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.t-id{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);font-weight:500;}
+.t-status{
+  font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  padding:2px 7px;border-radius:10px;
+}
+.t-status.open{background:#4F6FFF22;color:var(--accent);}
+.t-status.active{background:#00D68F22;color:var(--green);}
+.t-status.closed{background:#ffffff11;color:var(--muted);}
+.t-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.t-issue{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.t-time{font-size:10px;color:var(--muted);margin-top:5px;}
+.t-priority{
+  display:inline-block;font-size:9px;font-weight:700;letter-spacing:1px;
+  text-transform:uppercase;padding:2px 6px;border-radius:4px;margin-right:6px;
+}
+.t-priority.high{background:#FF4F6F22;color:var(--red);}
+.t-priority.med{background:#FFD64F22;color:var(--yellow);}
+.t-priority.low{background:#00D68F22;color:var(--green);}
+
+/* MAIN PANEL */
+.main{
+  display:flex;flex-direction:column;overflow:hidden;background:var(--bg);
+}
+.main-tabs{
+  display:flex;gap:0;border-bottom:1px solid var(--border);
+  background:var(--surface);padding:0 20px;
+}
+.tab{
+  padding:12px 18px;font-size:12px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .2s;font-family:'Rajdhani',sans-serif;
+}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab:hover{color:var(--text);}
+
+.tab-content{flex:1;display:none;overflow:hidden;}
+.tab-content.active{display:flex;flex-direction:column;}
+
+/* SCREENSHARE */
+.screen-area{
+  flex:1;background:#000;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.screen-placeholder{text-align:center;color:var(--muted);}
+.screen-placeholder .icon{font-size:64px;margin-bottom:16px;opacity:.3;}
+.screen-placeholder h3{font-family:'Rajdhani',sans-serif;font-size:18px;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;color:var(--muted);}
+.screen-placeholder p{font-size:12px;opacity:.6;}
+#remoteVideo{width:100%;height:100%;object-fit:contain;display:none;}
+.screen-toolbar{
+  background:var(--surface);border-top:1px solid var(--border);
+  padding:10px 20px;display:flex;align-items:center;gap:10px;
+}
+.screen-info{
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
+  flex:1;
+}
+.btn-icon{
+  background:var(--card);border:1px solid var(--border);color:var(--muted);
+  border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;
+  transition:all .2s;display:flex;align-items:center;gap:6px;font-family:'Nunito',sans-serif;
+}
+.btn-icon:hover{border-color:var(--accent);color:var(--accent);}
+.btn-icon.danger:hover{border-color:var(--red);color:var(--red);}
+.btn-icon.primary{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-color:transparent;color:#fff;
+}
+.btn-icon.primary:hover{opacity:.85;}
+.btn-icon svg{width:14px;height:14px;}
+.connection-badge{
+  font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  padding:4px 10px;border-radius:6px;
+}
+.connection-badge.disconnected{background:#FF4F6F22;color:var(--red);}
+.connection-badge.connecting{background:#FFD64F22;color:var(--yellow);}
+.connection-badge.connected{background:#00D68F22;color:var(--green);}
+
+/* CHAT */
+.chat-area{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
+.chat-area::-webkit-scrollbar{width:4px;}
+.chat-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.msg{display:flex;gap:10px;max-width:82%;}
+.msg.agent{align-self:flex-end;flex-direction:row-reverse;}
+.msg-bubble{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:10px 14px;font-size:13px;line-height:1.5;
+}
+.msg.agent .msg-bubble{
+  background:#0F0F2A;border-color:var(--accent);
+  border-bottom-right-radius:3px;
+}
+.msg:not(.agent) .msg-bubble{border-bottom-left-radius:3px;}
+.msg-avatar{
+  width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+}
+.msg:not(.agent) .msg-avatar{background:var(--card);border:1px solid var(--border);color:var(--muted);}
+.msg-meta{font-size:10px;color:var(--muted);margin-top:3px;}
+.msg.agent .msg-meta{text-align:right;}
+.msg-system{
+  align-self:center;font-size:11px;color:var(--muted);
+  background:var(--surface);border:1px solid var(--border);
+  padding:4px 14px;border-radius:20px;font-family:'JetBrains Mono',monospace;
+}
+.chat-input-area{
+  border-top:1px solid var(--border);padding:12px 16px;
+  display:flex;gap:8px;align-items:flex-end;background:var(--surface);
+}
+.chat-input{
+  flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);padding:10px 14px;font-size:13px;outline:none;resize:none;
+  font-family:'Nunito',sans-serif;line-height:1.4;min-height:40px;max-height:100px;
+  transition:border-color .2s;
+}
+.chat-input:focus{border-color:var(--accent);}
+.chat-input::placeholder{color:var(--muted);}
+.btn-send{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;color:#fff;border-radius:10px;width:40px;height:40px;
+  cursor:pointer;font-size:16px;transition:opacity .2s;flex-shrink:0;
+}
+.btn-send:hover{opacity:.85;}
+
+/* HISTORIAL */
+.history-area{flex:1;overflow-y:auto;padding:16px;}
+.history-area::-webkit-scrollbar{width:4px;}
+.history-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.history-card{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:14px;margin-bottom:10px;
+}
+.history-card .h-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.history-card .h-id{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);}
+.history-card .h-name{font-size:13px;font-weight:700;flex:1;}
+.history-card .h-date{font-size:11px;color:var(--muted);}
+.history-card .h-summary{font-size:12px;color:var(--muted);line-height:1.5;}
+.history-card .h-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.h-tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;
+  background:var(--surface);border:1px solid var(--border);color:var(--muted);}
+
+/* RIGHT PANEL */
+.rightpanel{
+  background:var(--surface);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.rp-section{border-bottom:1px solid var(--border);padding:14px 16px;}
+.rp-title{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.info-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.info-label{font-size:11px;color:var(--muted);}
+.info-value{font-size:12px;font-weight:600;color:var(--text);}
+.info-value.green{color:var(--green);}
+.info-value.red{color:var(--red);}
+.info-value.yellow{color:var(--yellow);}
+.info-value.mono{font-family:'JetBrains Mono',monospace;font-size:11px;}
+
+/* SESSION LINK */
+.link-box{
+  background:var(--card);border:1px solid var(--border);border-radius:8px;
+  padding:10px;margin-bottom:8px;
+}
+.link-url{
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);
+  word-break:break-all;line-height:1.4;margin-bottom:8px;
+}
+.btn-copy{
+  background:var(--surface);border:1px solid var(--border);color:var(--muted);
+  border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;
+  width:100%;transition:all .2s;font-family:'Nunito',sans-serif;
+}
+.btn-copy:hover{border-color:var(--accent);color:var(--accent);}
+.btn-copy.copied{border-color:var(--green);color:var(--green);}
+
+/* NOTES */
+.notes-area{flex:1;padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:0;}
+.notes-title{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.notes-input{
+  flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:10px;font-size:12px;outline:none;resize:none;
+  font-family:'Nunito',sans-serif;line-height:1.6;
+  min-height:120px;transition:border-color .2s;
+}
+.notes-input:focus{border-color:var(--accent);}
+.notes-input::placeholder{color:var(--muted);}
+.btn-save-note{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;
+  padding:7px 0;border-radius:6px;cursor:pointer;text-transform:uppercase;
+  font-family:'Nunito',sans-serif;width:100%;margin-top:8px;transition:opacity .2s;
+}
+.btn-save-note:hover{opacity:.85;}
+
+/* TOAST */
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:12px 16px;font-size:13px;
+  box-shadow:0 8px 32px #00000066;animation:slideIn .3s ease;
+  display:flex;align-items:center;gap:10px;min-width:240px;
+}
+.toast.success{border-color:var(--green);}
+.toast.error{border-color:var(--red);}
+.toast.info{border-color:var(--accent);}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes slideOut{from{transform:translateX(0);opacity:1;}to{transform:translateX(100%);opacity:0;}}
+.toast-icon{font-size:16px;}
+
+/* MODAL */
+.modal-overlay{
+  position:fixed;inset:0;background:#00000088;backdrop-filter:blur(4px);
+  z-index:1000;display:none;align-items:center;justify-content:center;
+}
+.modal-overlay.active{display:flex;}
+.modal{
+  background:var(--card);border:1px solid var(--border-glow);border-radius:16px;
+  padding:28px;width:420px;box-shadow:0 0 60px #4F6FFF22;
+}
+.modal-title{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;}
+.form-group{margin-bottom:14px;}
+.form-label{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;display:block;}
+.form-input,.form-select,.form-textarea{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);padding:10px 14px;font-size:13px;
+  outline:none;font-family:'Nunito',sans-serif;transition:border-color .2s;
+}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);}
+.form-textarea{resize:none;min-height:80px;line-height:1.5;}
+.form-select{background-color:var(--surface);appearance:none;cursor:pointer;}
+.modal-actions{display:flex;gap:10px;margin-top:20px;}
+.btn-modal-cancel{
+  flex:1;background:var(--surface);border:1px solid var(--border);color:var(--muted);
+  border-radius:8px;padding:10px;cursor:pointer;font-size:12px;font-weight:600;
+  font-family:'Nunito',sans-serif;transition:all .2s;text-transform:uppercase;letter-spacing:1px;
+}
+.btn-modal-cancel:hover{border-color:var(--accent);color:var(--accent);}
+.btn-modal-ok{
+  flex:2;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;color:#fff;border-radius:8px;padding:10px;cursor:pointer;
+  font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;
+  text-transform:uppercase;letter-spacing:1px;transition:opacity .2s;
+}
+.btn-modal-ok:hover{opacity:.85;}
+
+/* Scrollbar global */
+*::-webkit-scrollbar{width:4px;}
+*::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<div class="root">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <div class="logo">SoportePro</div>
+      <div class="logo-sub">Panel Agente</div>
+    </div>
+    <div class="topbar-badge">🖥 IDM Azatlán FC</div>
+    <div class="topbar-right">
+      <div class="topbar-clock" id="clock">00:00:00</div>
+      <div class="status-dot"></div>
+      <div class="agent-name">Agente: <span id="agentNameDisplay">—</span></div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR TICKETS -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Tickets</div>
+      <button class="btn-new" onclick="openNewTicket()">+ Nuevo</button>
+    </div>
+    <div class="tickets-list" id="ticketsList"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="main-tabs">
+      <div class="tab active" onclick="switchTab('screen',this)">🖥 Pantalla Remota</div>
+      <div class="tab" onclick="switchTab('chat',this)">💬 Chat</div>
+      <div class="tab" onclick="switchTab('history',this)">📋 Historial</div>
+    </div>
+
+    <!-- TAB: SCREENSHARE -->
+    <div class="tab-content active" id="tab-screen">
+      <div class="screen-area">
+        <div class="screen-placeholder" id="screenPlaceholder">
+          <div class="icon">🖥</div>
+          <h3>Sin Conexión Remota</h3>
+          <p>Comparte el link de sesión con el cliente<br>para comenzar la visualización de pantalla</p>
+        </div>
+        <video id="remoteVideo" autoplay playsinline></video>
+      </div>
+      <div class="screen-toolbar">
+        <div class="screen-info" id="screenInfo">Sin sesión activa</div>
+        <div class="connection-badge disconnected" id="connBadge">Desconectado</div>
+        <button class="btn-icon" onclick="requestFullscreen()">⛶ Fullscreen</button>
+        <button class="btn-icon danger" onclick="endSession()">✕ Finalizar</button>
+      </div>
+    </div>
+
+    <!-- TAB: CHAT -->
+    <div class="tab-content" id="tab-chat">
+      <div class="chat-area" id="chatArea">
+        <div class="msg-system">💬 Chat de sesión de soporte</div>
+      </div>
+      <div class="chat-input-area">
+        <textarea class="chat-input" id="chatInput" placeholder="Escribe un mensaje..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+        <button class="btn-send" onclick="sendChat()">➤</button>
+      </div>
+    </div>
+
+    <!-- TAB: HISTORIAL -->
+    <div class="tab-content" id="tab-history">
+      <div class="history-area" id="historyArea"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="rightpanel">
+    <!-- Session Info -->
+    <div class="rp-section">
+      <div class="rp-title">Sesión Activa</div>
+      <div class="info-row">
+        <div class="info-label">Estado</div>
+        <div class="info-value" id="rpStatus" style="color:var(--red)">Sin sesión</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Cliente</div>
+        <div class="info-value" id="rpClient">—</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Ticket</div>
+        <div class="info-value mono" id="rpTicket">—</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Duración</div>
+        <div class="info-value mono" id="rpDuration">—</div>
+      </div>
+    </div>
+    <!-- Link Sesión -->
+    <div class="rp-section">
+      <div class="rp-title">Link de Sesión</div>
+      <div class="link-box">
+        <div class="link-url" id="sessionLinkUrl">Selecciona un ticket para generar el link</div>
+        <button class="btn-copy" id="btnCopyLink" onclick="copySessionLink()">📋 Copiar Link</button>
+      </div>
+    </div>
+    <!-- Info Cliente -->
+    <div class="rp-section">
+      <div class="rp-title">Info Cliente</div>
+      <div class="info-row"><div class="info-label">SO</div><div class="info-value mono" id="rpOS">—</div></div>
+      <div class="info-row"><div class="info-label">Navegador</div><div class="info-value mono" id="rpBrowser">—</div></div>
+      <div class="info-row"><div class="info-label">Resolución</div><div class="info-value mono" id="rpResolution">—</div></div>
+    </div>
+    <!-- Notas -->
+    <div class="notes-area">
+      <div class="notes-title">📝 Notas de Sesión</div>
+      <textarea class="notes-input" id="sessionNotes" placeholder="Escribe notas sobre el problema y la solución..."></textarea>
+      <button class="btn-save-note" onclick="saveNotes()">Guardar Notas</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO TICKET -->
+<div class="modal-overlay" id="modalTicket">
+  <div class="modal">
+    <div class="modal-title">➕ Nuevo Ticket de Soporte</div>
+    <div class="form-group">
+      <label class="form-label">Nombre del Cliente</label>
+      <input class="form-input" id="fClientName" placeholder="Ej: Carlos Mendoza" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Departamento / Área</label>
+      <input class="form-input" id="fDept" placeholder="Ej: Nutrición, Operaciones..." />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descripción del Problema</label>
+      <textarea class="form-textarea" id="fIssue" placeholder="Describe el problema brevemente..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Prioridad</label>
+      <select class="form-select" id="fPriority">
+        <option value="high">🔴 Alta</option>
+        <option value="med" selected>🟡 Media</option>
+        <option value="low">🟢 Baja</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-modal-ok" onclick="createTicket()">Crear Ticket</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ===================== CONFIG =====================
+const AGENT_NAME = prompt('Nombre del Agente:', 'Agente IDM') || 'Agente IDM';
+document.getElementById('agentNameDisplay').textContent = AGENT_NAME;
+
+// ===================== CLOCK =====================
+function updateClock(){
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toTimeString().split(' ')[0];
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ===================== TABS =====================
+function switchTab(name, el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ===================== TICKETS =====================
+let tickets = JSON.parse(localStorage.getItem('sp_tickets') || '[]');
+let activeTicket = null;
+let sessionTimer = null;
+let sessionStart = null;
+
+function saveTickets(){ localStorage.setItem('sp_tickets', JSON.stringify(tickets)); }
+
+function renderTickets(){
+  const list = document.getElementById('ticketsList');
+  if(!tickets.length){
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px;">Sin tickets aún.<br>Crea uno para comenzar.</div>';
+    return;
+  }
+  list.innerHTML = tickets.map((t,i) => `
+    <div class="ticket-item${activeTicket===t.id?' active':''}" onclick="selectTicket('${t.id}')">
+      <div class="t-header">
+        <span class="t-id">#${t.id}</span>
+        <span class="t-status ${t.status}">${t.status==='open'?'Abierto':t.status==='active'?'En Sesión':'Cerrado'}</span>
+      </div>
+      <div class="t-name">${t.clientName}</div>
+      <div class="t-issue">${t.issue}</div>
+      <div class="t-time">
+        <span class="t-priority ${t.priority}">${t.priority==='high'?'Alta':t.priority==='med'?'Media':'Baja'}</span>
+        ${t.dept} · ${new Date(t.created).toLocaleDateString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
+      </div>
+    </div>
+  `).join('');
+}
+
+function openNewTicket(){ document.getElementById('modalTicket').classList.add('active'); }
+function closeModal(){ document.getElementById('modalTicket').classList.remove('active'); }
+
+function createTicket(){
+  const name = document.getElementById('fClientName').value.trim();
+  const issue = document.getElementById('fIssue').value.trim();
+  if(!name||!issue){ showToast('Completa los campos requeridos','error'); return; }
+  const id = Date.now().toString(36).toUpperCase();
+  const t = {
+    id, clientName: name,
+    dept: document.getElementById('fDept').value || 'General',
+    issue, priority: document.getElementById('fPriority').value,
+    status: 'open', created: Date.now(), notes: '', history: []
+  };
+  tickets.unshift(t); saveTickets(); renderTickets(); closeModal();
+  ['fClientName','fDept','fIssue'].forEach(f=>document.getElementById(f).value='');
+  showToast(`Ticket #${id} creado`,'success');
+}
+
+function selectTicket(id){
+  activeTicket = id;
+  const t = tickets.find(x=>x.id===id);
+  if(!t) return;
+  renderTickets();
+  document.getElementById('rpClient').textContent = t.clientName;
+  document.getElementById('rpTicket').textContent = '#'+t.id;
+  document.getElementById('sessionNotes').value = t.notes || '';
+  // Generar link para el cliente
+  const clientUrl = window.location.href.replace('soporte-agente.html','soporte-cliente.html')+'?session='+id;
+  document.getElementById('sessionLinkUrl').textContent = clientUrl;
+  document.getElementById('rpStatus').textContent = 'Ticket seleccionado';
+  document.getElementById('rpStatus').style.color = 'var(--yellow)';
+  showToast(`Ticket #${id} seleccionado`,'info');
+  initWebRTC(id);
+}
+
+// ===================== WEBRTC =====================
+let pc = null;
+let dataChannel = null;
+
+async function initWebRTC(sessionId){
+  if(pc){ pc.close(); pc = null; }
+  // Usar servidor STUN público de Google
+  pc = new RTCPeerConnection({
+    iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']}]
+  });
+  dataChannel = pc.createDataChannel('chat');
+  setupDataChannel(dataChannel);
+  pc.onicecandidate = e => {
+    if(e.candidate) saveSignal(sessionId,'agent-ice',JSON.stringify(e.candidate));
+  };
+  pc.ontrack = e => {
+    const video = document.getElementById('remoteVideo');
+    video.srcObject = e.streams[0];
+    video.style.display = 'block';
+    document.getElementById('screenPlaceholder').style.display = 'none';
+    setBadge('connected');
+    document.getElementById('rpStatus').textContent = 'En sesión';
+    document.getElementById('rpStatus').style.color = 'var(--green)';
+    startTimer();
+    showToast('Pantalla remota conectada','success');
+    addChatMsg('sistema','','El cliente compartió su pantalla');
+  };
+  pc.onconnectionstatechange = () => {
+    if(pc.connectionState==='disconnected'||pc.connectionState==='failed'){
+      setBadge('disconnected');
+      document.getElementById('rpStatus').textContent = 'Desconectado';
+      document.getElementById('rpStatus').style.color = 'var(--red)';
+      stopTimer();
+    }
+  };
+  setBadge('connecting');
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  saveSignal(sessionId,'agent-offer',JSON.stringify(offer));
+  pollClientAnswer(sessionId);
+}
+
+function setupDataChannel(ch){
+  ch.onopen = () => {};
+  ch.onmessage = e => {
+    const d = JSON.parse(e.data);
+    if(d.type==='chat') addChatMsg('client',d.name,d.text);
+    if(d.type==='info'){
+      document.getElementById('rpOS').textContent = d.os||'—';
+      document.getElementById('rpBrowser').textContent = d.browser||'—';
+      document.getElementById('rpResolution').textContent = d.resolution||'—';
+    }
+  };
+}
+
+// Señalización via localStorage (mismo dominio) o localStorage compartido
+function saveSignal(session,key,value){
+  localStorage.setItem('signal_'+session+'_'+key, value);
+}
+function readSignal(session,key){
+  return localStorage.getItem('signal_'+session+'_'+key);
+}
+
+let pollTimer = null;
+function pollClientAnswer(sessionId){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async()=>{
+    const answer = readSignal(sessionId,'client-answer');
+    if(answer && pc.signalingState==='have-local-offer'){
+      await pc.setRemoteDescription(JSON.parse(answer));
+      clearInterval(pollTimer);
+      pollClientIce(sessionId);
+    }
+  },1000);
+}
+
+function pollClientIce(sessionId){
+  let added = new Set();
+  const t = setInterval(()=>{
+    for(let i=0;i<20;i++){
+      const k = 'client-ice-'+i;
+      const v = readSignal(sessionId,k);
+      if(v && !added.has(k)){
+        added.add(k);
+        pc.addIceCandidate(JSON.parse(v)).catch(()=>{});
+      }
+    }
+  },1000);
+  setTimeout(()=>clearInterval(t),60000);
+}
+
+// ===================== CHAT =====================
+function addChatMsg(role, name, text){
+  const area = document.getElementById('chatArea');
+  if(role==='sistema'){
+    const div = document.createElement('div');
+    div.className='msg-system';
+    div.textContent = text;
+    area.appendChild(div);
+  } else {
+    const isAgent = role==='agent';
+    const div = document.createElement('div');
+    div.className = 'msg'+(isAgent?' agent':'');
+    div.innerHTML = `
+      <div class="msg-avatar">${isAgent?'A':'C'}</div>
+      <div>
+        <div class="msg-bubble">${text}</div>
+        <div class="msg-meta">${isAgent?AGENT_NAME:name} · ${new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>`;
+    area.appendChild(div);
+  }
+  area.scrollTop = area.scrollHeight;
+}
+
+function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  addChatMsg('agent', AGENT_NAME, text);
+  input.value = '';
+  if(dataChannel && dataChannel.readyState==='open'){
+    dataChannel.send(JSON.stringify({type:'chat',name:AGENT_NAME,text}));
+  }
+  // Guardar en historial del ticket
+  if(activeTicket){
+    const t = tickets.find(x=>x.id===activeTicket);
+    if(t){ t.history.push({role:'agent',name:AGENT_NAME,text,ts:Date.now()}); saveTickets(); }
+  }
+}
+
+// ===================== SESSION TIMER =====================
+function startTimer(){
+  sessionStart = Date.now();
+  if(sessionTimer) clearInterval(sessionTimer);
+  const el = document.getElementById('rpDuration');
+  sessionTimer = setInterval(()=>{
+    const s = Math.floor((Date.now()-sessionStart)/1000);
+    const m = Math.floor(s/60), sec = s%60, h = Math.floor(m/60);
+    el.textContent = `${String(h).padStart(2,'0')}:${String(m%60).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  },1000);
+  if(activeTicket){
+    const t = tickets.find(x=>x.id===activeTicket);
+    if(t){ t.status='active'; saveTickets(); renderTickets(); }
+  }
+}
+function stopTimer(){ if(sessionTimer) clearInterval(sessionTimer); }
+
+// ===================== BADGE =====================
+function setBadge(state){
+  const b = document.getElementById('connBadge');
+  b.className = 'connection-badge '+state;
+  b.textContent = state==='connected'?'Conectado':state==='connecting'?'Conectando...':'Desconectado';
+}
+
+// ===================== ACTIONS =====================
+function copySessionLink(){
+  const url = document.getElementById('sessionLinkUrl').textContent;
+  if(url.includes('Selecciona')){ showToast('Selecciona un ticket primero','error'); return; }
+  navigator.clipboard.writeText(url).then(()=>{
+    const btn = document.getElementById('btnCopyLink');
+    btn.textContent = '✅ Copiado!';
+    btn.className='btn-copy copied';
+    setTimeout(()=>{btn.textContent='📋 Copiar Link';btn.className='btn-copy';},2000);
+    showToast('Link copiado al portapapeles','success');
+  });
+}
+
+function requestFullscreen(){
+  const v = document.getElementById('remoteVideo');
+  if(v.requestFullscreen) v.requestFullscreen();
+  else if(v.webkitRequestFullscreen) v.webkitRequestFullscreen();
+}
+
+function endSession(){
+  if(!activeTicket){ showToast('Sin sesión activa','error'); return; }
+  if(!confirm('¿Finalizar sesión y cerrar ticket?')) return;
+  const t = tickets.find(x=>x.id===activeTicket);
+  if(t){ t.status='closed'; saveTickets(); }
+  if(pc){ pc.close(); pc=null; }
+  stopTimer();
+  setBadge('disconnected');
+  document.getElementById('remoteVideo').style.display='none';
+  document.getElementById('remoteVideo').srcObject=null;
+  document.getElementById('screenPlaceholder').style.display='';
+  document.getElementById('rpStatus').textContent='Sin sesión';
+  document.getElementById('rpStatus').style.color='var(--red)';
+  document.getElementById('rpClient').textContent='—';
+  document.getElementById('rpTicket').textContent='—';
+  document.getElementById('rpDuration').textContent='—';
+  document.getElementById('sessionLinkUrl').textContent='Selecciona un ticket para generar el link';
+  addChatMsg('sistema','','Sesión finalizada');
+  // Guardar en historial
+  if(t) addToHistory(t);
+  activeTicket = null;
+  renderTickets();
+  renderHistory();
+  showToast('Sesión finalizada y ticket cerrado','info');
+}
+
+function saveNotes(){
+  if(!activeTicket){ showToast('Sin ticket activo','error'); return; }
+  const t = tickets.find(x=>x.id===activeTicket);
+  if(t){ t.notes = document.getElementById('sessionNotes').value; saveTickets(); }
+  showToast('Notas guardadas','success');
+}
+
+// ===================== HISTORY =====================
+let closedHistory = JSON.parse(localStorage.getItem('sp_history') || '[]');
+
+function addToHistory(ticket){
+  closedHistory.unshift({
+    id: ticket.id, clientName: ticket.clientName,
+    dept: ticket.dept, issue: ticket.issue,
+    notes: ticket.notes, closed: Date.now(),
+    history: ticket.history
+  });
+  if(closedHistory.length>50) closedHistory.pop();
+  localStorage.setItem('sp_history', JSON.stringify(closedHistory));
+}
+
+function renderHistory(){
+  const area = document.getElementById('historyArea');
+  if(!closedHistory.length){
+    area.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:30px;">Sin historial aún.</div>';
+    return;
+  }
+  area.innerHTML = closedHistory.map(h=>`
+    <div class="history-card">
+      <div class="h-header">
+        <span class="h-id">#${h.id}</span>
+        <span class="h-name">${h.clientName}</span>
+        <span class="h-date">${new Date(h.closed).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'})}</span>
+      </div>
+      <div class="h-summary">${h.notes||h.issue||'Sin notas'}</div>
+      <div class="h-tags">
+        <span class="h-tag">${h.dept}</span>
+        <span class="h-tag">${h.history?.length||0} mensajes</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===================== TOAST =====================
+function showToast(msg, type='info'){
+  const icons = {success:'✅',error:'❌',info:'ℹ️'};
+  const c = document.getElementById('toastContainer');
+  const d = document.createElement('div');
+  d.className = 'toast '+type;
+  d.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${msg}</span>`;
+  c.appendChild(d);
+  setTimeout(()=>{
+    d.style.animation='slideOut .3s ease forwards';
+    setTimeout(()=>d.remove(),300);
+  },3500);
+}
+
+// ===================== INIT =====================
+renderTickets();
+renderHistory();
+
+// Auto-poll para ICE de clientes entrantes
+setInterval(()=>{
+  if(!activeTicket||!pc||pc.signalingState==='closed') return;
+  // Checar si hay nuevos ICE del cliente
+  for(let i=0;i<20;i++){
+    const k = 'signal_'+activeTicket+'_client-ice-'+i;
+    const v = localStorage.getItem(k);
+    if(v){
+      // ya manejado por pollClientIce
+    }
+  }
+},2000);
+</script>
+</body>
+</html>
