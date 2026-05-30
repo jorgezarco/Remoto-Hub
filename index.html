@@ -560,12 +560,55 @@ function selectTicket(id){
   document.getElementById('rpTicket').textContent = '#'+t.id;
   document.getElementById('sessionNotes').value = t.notes || '';
   // Generar link para el cliente
-  const clientUrl = window.location.href.replace('soporte-agente.html','soporte-cliente.html')+'?session='+id;
+  const clientUrl = 'https://jorgezarco.github.io/Remoto-Hub1/?session='+id;
   document.getElementById('sessionLinkUrl').textContent = clientUrl;
   document.getElementById('rpStatus').textContent = 'Ticket seleccionado';
   document.getElementById('rpStatus').style.color = 'var(--yellow)';
   showToast(`Ticket #${id} seleccionado`,'info');
   initWebRTC(id);
+}
+
+// ===================== SUPABASE CONFIG =====================
+// ⚙️ Pega aquí tus credenciales de Supabase (Project Settings → API)
+const SB_URL  = 'https://kycisiryrqiqpfmocojf.supabase.co';
+const SB_KEY  = 'sb_publishable_l7_RydMGWR4wosjdZmPOWg_OCZfPFuU';
+
+const SB_HDR  = { 'Content-Type':'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY };
+
+async function sbUpsert(session_id, key, value){
+  await fetch(`${SB_URL}/rest/v1/signals`, {
+    method:'POST',
+    headers:{ ...SB_HDR, 'Prefer':'resolution=merge-duplicates' },
+    body: JSON.stringify({ session_id, key, value: JSON.stringify(value) })
+  });
+}
+async function sbGet(session_id, key){
+  const r = await fetch(
+    `${SB_URL}/rest/v1/signals?session_id=eq.${session_id}&key=eq.${key}&select=value`,
+    { headers: SB_HDR }
+  );
+  const rows = await r.json();
+  if(!rows || !rows.length) return null;
+  try{ return JSON.parse(rows[0].value); }catch(e){ return null; }
+}
+async function sbGetMany(session_id, keyPrefix){
+  const r = await fetch(
+    `${SB_URL}/rest/v1/signals?session_id=eq.${session_id}&key=like.${keyPrefix}*&select=key,value`,
+    { headers: SB_HDR }
+  );
+  return r.ok ? r.json() : [];
+}
+async function sbInsert(session_id, key, value){
+  await fetch(`${SB_URL}/rest/v1/signals`, {
+    method:'POST',
+    headers: SB_HDR,
+    body: JSON.stringify({ session_id, key: key+'-'+Date.now(), value: JSON.stringify(value) })
+  });
+}
+async function sbDelete(session_id){
+  await fetch(`${SB_URL}/rest/v1/signals?session_id=eq.${session_id}`, {
+    method:'DELETE', headers: SB_HDR
+  });
 }
 
 // ===================== WEBRTC =====================
@@ -574,14 +617,19 @@ let dataChannel = null;
 
 async function initWebRTC(sessionId){
   if(pc){ pc.close(); pc = null; }
-  // Usar servidor STUN público de Google
+  await sbDelete(sessionId);
+
   pc = new RTCPeerConnection({
-    iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']}]
+    iceServers:[
+      {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},
+      {urls:'stun:stun.cloudflare.com:3478'}
+    ]
   });
   dataChannel = pc.createDataChannel('chat');
   setupDataChannel(dataChannel);
-  pc.onicecandidate = e => {
-    if(e.candidate) saveSignal(sessionId,'agent-ice',JSON.stringify(e.candidate));
+
+  pc.onicecandidate = async e => {
+    if(e.candidate) await sbInsert(sessionId, 'agent-ice', e.candidate.toJSON());
   };
   pc.ontrack = e => {
     const video = document.getElementById('remoteVideo');
@@ -603,10 +651,11 @@ async function initWebRTC(sessionId){
       stopTimer();
     }
   };
+
   setBadge('connecting');
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
-  saveSignal(sessionId,'agent-offer',JSON.stringify(offer));
+  await sbUpsert(sessionId, 'agent-offer', {type:offer.type, sdp:offer.sdp});
   pollClientAnswer(sessionId);
 }
 
@@ -623,40 +672,31 @@ function setupDataChannel(ch){
   };
 }
 
-// Señalización via localStorage (mismo dominio) o localStorage compartido
-function saveSignal(session,key,value){
-  localStorage.setItem('signal_'+session+'_'+key, value);
-}
-function readSignal(session,key){
-  return localStorage.getItem('signal_'+session+'_'+key);
-}
-
 let pollTimer = null;
 function pollClientAnswer(sessionId){
   if(pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(async()=>{
-    const answer = readSignal(sessionId,'client-answer');
-    if(answer && pc.signalingState==='have-local-offer'){
-      await pc.setRemoteDescription(JSON.parse(answer));
+    const answer = await sbGet(sessionId, 'client-answer');
+    if(answer && pc && pc.signalingState==='have-local-offer'){
+      await pc.setRemoteDescription(new RTCSessionDescription(answer));
       clearInterval(pollTimer);
       pollClientIce(sessionId);
     }
-  },1000);
+  },2000);
 }
 
 function pollClientIce(sessionId){
   let added = new Set();
-  const t = setInterval(()=>{
-    for(let i=0;i<20;i++){
-      const k = 'client-ice-'+i;
-      const v = readSignal(sessionId,k);
-      if(v && !added.has(k)){
-        added.add(k);
-        pc.addIceCandidate(JSON.parse(v)).catch(()=>{});
+  const t = setInterval(async()=>{
+    const rows = await sbGetMany(sessionId, 'client-ice');
+    rows.forEach(row => {
+      if(!added.has(row.key)){
+        added.add(row.key);
+        try{ pc.addIceCandidate(new RTCIceCandidate(JSON.parse(row.value))).catch(()=>{}); }catch(e){}
       }
-    }
-  },1000);
-  setTimeout(()=>clearInterval(t),60000);
+    });
+  },2000);
+  setTimeout(()=>clearInterval(t),90000);
 }
 
 // ===================== CHAT =====================
